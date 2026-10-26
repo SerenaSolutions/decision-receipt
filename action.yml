@@ -1,0 +1,45 @@
+name: 'Z-QEA Decision Receipt'
+description: 'Trivalent CI decisions with sealed post-quantum receipts: your pipeline returns 1, 0, or REFUSED with a declared statistical band — no more fake green checkmarks.'
+author: 'Serena Quantum Solutions'
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+inputs:
+  decision-file:
+    description: 'JSON with {metric, shots, epsilon, threshold, family?, description?} — metric and threshold in [0,1]'
+    required: true
+  prev-receipt:
+    description: 'previous receipt JSON path (chaining); omit for the genesis receipt of a new chain'
+    required: false
+  signing-key:
+    description: 'ML-DSA-44 signing key (use repo secrets); never logged'
+    required: false
+  family:
+    description: 'number of joint decisions (Bonferroni family correction); default 1'
+    required: false
+    default: '1'
+outputs:
+  verdict:
+    description: '"1" (confirmed), "0" (refuted) or "REFUSED"'
+  reason:
+    description: 'machine-readable refusal/verdict reason'
+  receipt:
+    description: 'path of the sealed receipt JSON'
+  seal:
+    description: 'SHA3-256 seal of the receipt'
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Install post-quantum core (ML-DSA-44)'
+      shell: bash
+      run: pip install --quiet pqcrypto
+    - name: 'Decide trivalently and seal the receipt'
+      shell: bash
+      run: |
+        python3 "${{ github.action_path }}/decision_receipt.py" \
+          --decision "${{ inputs.decision-file }}" \
+          --family "${{ inputs.family }}" \
+          ${{ inputs.prev-receipt && format('--prev {0}', inputs.prev-receipt) || '' }} \
+          ${{ inputs.signing-key && '--sign-from-env' || '' }}
+      env:
+        ZQEA_SIGNING_KEY: ${{ inputs.signing-key }}

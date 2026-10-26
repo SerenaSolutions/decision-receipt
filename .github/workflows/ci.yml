@@ -1,0 +1,25 @@
+name: CI
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  battery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Bateria trivalente
+        run: |
+          pip install --quiet pytest
+          python -m pytest tests/ -q
+  self-hosting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: A Action decide sobre o proprio release (prova auto-referencial)
+        run: |
+          echo '{"metric": 0.99, "threshold": 0.90, "shots": 2048, "epsilon": 0.05, "description": "CI battery pass rate gate"}' > decision.json
+          python3 decision_receipt.py --decision decision.json --family 1
+      - name: Um veredito REFUSED honesto tambem e sucesso do pipeline
+        run: |
+          echo '{"metric": 0.905, "threshold": 0.90, "shots": 64, "epsilon": 0.05, "description": "underpowered probe must refuse"}' > weak.json
+          python3 decision_receipt.py --decision weak.json --family 1 || echo "recusa honesta: exit 1 esperado"
